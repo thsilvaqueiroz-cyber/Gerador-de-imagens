@@ -52,16 +52,25 @@ export default function App() {
   useEffect(() => {
     const checkKey = async () => {
       // @ts-ignore
-      const selected = await window.aistudio.hasSelectedApiKey();
-      setHasKey(selected);
+      if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+        // @ts-ignore
+        const selected = await window.aistudio.hasSelectedApiKey();
+        setHasKey(selected);
+      } else {
+        // Se não estiver no AI Studio, assume que a chave está no process.env (Vercel)
+        setHasKey(true);
+      }
     };
     checkKey();
   }, []);
 
   const handleSelectKey = async () => {
     // @ts-ignore
-    await window.aistudio.openSelectKey();
-    setHasKey(true); // Proceed assuming success per requirements
+    if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
+      // @ts-ignore
+      await window.aistudio.openSelectKey();
+      setHasKey(true);
+    }
   };
 
   const handleGenerate = async () => {
@@ -72,7 +81,6 @@ export default function App() {
     setResults([]);
 
     try {
-      // Generate 4 variations in parallel
       const variationPromises = VARIATIONS.map(async (v, idx) => {
         const url = await generateFashionVariation(modelPhoto, productPhoto, v);
         return {
@@ -89,9 +97,9 @@ export default function App() {
       console.error(error);
       if (error.message === "API_KEY_EXPIRED") {
         setHasKey(false);
-        setErrorMsg("Sua chave API expirou ou não foi encontrada. Por favor, selecione novamente.");
+        setErrorMsg("Sua chave API expirou ou não foi encontrada.");
       } else {
-        setErrorMsg("Ocorreu um erro na geração. Verifique sua conexão e tente novamente.");
+        setErrorMsg("Erro na geração. Certifique-se de configurar a API_KEY nas configurações da Vercel.");
       }
       setAppState(AppState.ERROR);
     }
@@ -107,17 +115,17 @@ export default function App() {
             </svg>
           </div>
           <div className="space-y-4">
-            <h1 className="text-3xl font-bold">Acesso Restrito</h1>
+            <h1 className="text-3xl font-bold">Configuração Necessária</h1>
             <p className="text-gray-400">
-              O modelo <strong>Nano Banana Pro (Gemini 3 Pro)</strong> exige que você selecione uma chave de API paga do Google Cloud.
+              O modelo <strong>Nano Banana Pro</strong> exige uma chave de API válida.
             </p>
-            <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noreferrer" className="text-purple-400 text-sm underline block">Saiba mais sobre faturamento</a>
+            <p className="text-xs text-gray-500 italic">Se estiver na Vercel, configure a variável de ambiente API_KEY.</p>
           </div>
           <button 
             onClick={handleSelectKey}
             className="w-full py-4 bg-purple-600 hover:bg-purple-500 rounded-xl font-bold transition-all transform hover:scale-[1.02]"
           >
-            Selecionar Chave API
+            Selecionar Chave (AI Studio)
           </button>
         </div>
       </div>
@@ -126,7 +134,6 @@ export default function App() {
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-12">
-      {/* Header */}
       <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-2">
           <h1 className="text-4xl md:text-5xl font-black gradient-text tracking-tight">STUDIO BANANA PRO</h1>
@@ -140,12 +147,11 @@ export default function App() {
             }}
             className="px-6 py-3 border border-gray-700 hover:bg-white/5 rounded-full text-sm font-semibold transition-all"
           >
-            Iniciar Novo Projeto
+            Novo Projeto
           </button>
         )}
       </header>
 
-      {/* Main UI */}
       <main className="space-y-12">
         {appState === AppState.IDLE || appState === AppState.ERROR ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 max-w-4xl mx-auto">
@@ -162,7 +168,7 @@ export default function App() {
             
             <div className="sm:col-span-2 flex flex-col items-center gap-6 pt-4">
               {errorMsg && (
-                <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-6 py-4 rounded-2xl w-full text-center">
+                <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-6 py-4 rounded-2xl w-full text-center text-sm">
                   {errorMsg}
                 </div>
               )}
@@ -176,65 +182,27 @@ export default function App() {
                 }`}
               >
                 Gerar Coleção 4K
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M11.3 1.047a1 1 0 01.897.95V4.69l3.58 3.581a1 1 0 010 1.414l-3.58 3.58v2.693a1 1 0 01-.897.95 1 1 0 01-1.103-.95v-2.121l-3.58-3.581a1 1 0 010-1.414l3.58-3.58V1.997a1 1 0 011.103-.95zM10 2.5a.5.5 0 00-.5.5v2.5a.5.5 0 00.146.354l3.5 3.5a.5.5 0 00.708 0l3.5-3.5A.5.5 0 0017 5.5V3a.5.5 0 00-.5-.5H10z" clipRule="evenodd" />
-                </svg>
               </button>
-              <p className="text-xs text-gray-500 text-center max-w-xs">
-                A geração resultará em 4 imagens de alta definição (4K) em formato vertical 9:16 ideal para mídias sociais.
-              </p>
             </div>
           </div>
         ) : appState === AppState.GENERATING ? (
           <div className="py-24 flex flex-col items-center justify-center gap-8 glass-panel rounded-3xl text-center">
-            <div className="relative">
-               <div className="w-24 h-24 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin"></div>
-               <div className="absolute inset-0 flex items-center justify-center">
-                 <div className="w-16 h-16 bg-purple-500/20 rounded-full animate-pulse"></div>
-               </div>
-            </div>
-            <div className="space-y-3">
-              <h2 className="text-2xl font-bold text-white">Renderizando Coleção 4K...</h2>
-              <div className="flex flex-col gap-1">
-                <p className="text-gray-400">Aplicando tecidos e iluminação fotorrealista em formato 9:16.</p>
-                <p className="text-xs text-purple-400/80 animate-pulse">Este processo é intensivo e pode levar alguns instantes.</p>
-              </div>
-            </div>
+            <div className="w-24 h-24 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin"></div>
+            <h2 className="text-2xl font-bold text-white">Renderizando 4K...</h2>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {results.map((res) => (
-              <div key={res.id} className="group relative glass-panel rounded-2xl overflow-hidden shadow-2xl transition-all hover:ring-2 hover:ring-purple-500/50">
+              <div key={res.id} className="group relative glass-panel rounded-2xl overflow-hidden shadow-2xl">
                 <img src={res.url} alt={res.variationType} className="w-full aspect-[9/16] object-cover" />
-                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/40 to-transparent">
-                  <p className="text-purple-400 text-[10px] font-bold uppercase tracking-widest mb-1">Variação</p>
-                  <div className="flex justify-between items-end">
-                    <h3 className="text-sm font-bold text-white truncate mr-2">{res.variationType}</h3>
-                    <a 
-                      href={res.url} 
-                      download={`studio-banana-${res.variationType.toLowerCase().replace(/\s/g, '-')}.png`}
-                      className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors backdrop-blur-md shrink-0"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                    </a>
-                  </div>
+                <div className="absolute bottom-0 left-0 right-0 p-4 bg-black/60">
+                  <h3 className="text-sm font-bold text-white">{res.variationType}</h3>
                 </div>
               </div>
             ))}
           </div>
         )}
       </main>
-
-      {/* Footer Info */}
-      <footer className="mt-20 pt-8 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center gap-4 text-gray-500 text-sm">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-          Model: Nano Banana Pro • Quality: 4K • Ratio: 9:16
-        </div>
-        <div>© 2025 Studio Banana Fashion AI</div>
-      </footer>
     </div>
   );
 }
