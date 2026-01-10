@@ -1,0 +1,7 @@
+{
+  "name": "Studio Banana Pro - Fashion AI",
+  "description": "Uma ferramenta profissional para transformar fotos de modelos e produtos em campanhas ultra-realistas usando o Gemini 3 Pro Image (Nano Banana Pro).",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
