@@ -1,81 +1,59 @@
 
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { VariationConfig } from "./types";
 
 export const VARIATIONS: VariationConfig[] = [
   {
-    label: "Fashion Editorial (Carão)",
-    prompt: "High-fashion editorial style, fierce facial expression ('carão'), professional dramatic lighting, 8k resolution, ultra-realistic texture."
+    label: "Editorial Vogue",
+    prompt: "High-end luxury fashion editorial, sharp focus, dramatic studio lighting, Vogue style, ultra-realistic skin and fabric textures, 8k rendering."
   },
   {
-    label: "Natural & Lifestyle",
-    prompt: "Candid lifestyle shot, natural smile, soft golden hour lighting, relaxed pose, ultra-realistic skin and fabric textures."
+    label: "Street Lifestyle",
+    prompt: "Professional street style photography, natural daylight, urban luxury background, candid aesthetic, hyper-realistic details."
   },
   {
-    label: "Dynamic Angle",
-    prompt: "Low angle perspective, dynamic movement, high fashion pose, sharp focus on product details, cinematic atmosphere."
+    label: "Macro Detail",
+    prompt: "Extreme close-up focusing on fabric texture and product quality, soft bokeh, professional fashion campaign lighting."
   },
   {
-    label: "Studio Close-up",
-    prompt: "Extreme close-up shot focusing on the product and the model's expression, soft bokeh background, flawless skin rendering, hyper-realistic."
+    label: "Cinematic Motion",
+    prompt: "Cinematic wide shot, motion blur in background, high fashion pose, epic mood, masterwork quality rendering."
   }
 ];
 
-export async function generateFashionVariation(
+export async function generateFashionImage(
   modelBase64: string,
   productBase64: string,
   variation: VariationConfig
 ): Promise<string> {
-  // Re-instantiate to ensure latest API key
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  const modelPart = {
-    inlineData: {
-      mimeType: 'image/png',
-      data: modelBase64,
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-pro-image-preview',
+    contents: {
+      parts: [
+        { inlineData: { data: modelBase64, mimeType: 'image/png' } },
+        { inlineData: { data: productBase64, mimeType: 'image/png' } },
+        { text: `TASK: Ultra-realistic 4K Fashion Generation.
+          IMAGE 1: Reference for model and background.
+          IMAGE 2: Reference for product/clothing.
+          RESULT: The model from Image 1 wearing the product from Image 2 in the same setting.
+          STYLE: ${variation.prompt}` }
+      ]
     },
-  };
-  
-  const productPart = {
-    inlineData: {
-      mimeType: 'image/png',
-      data: productBase64,
-    },
-  };
-
-  const textPart = {
-    text: `You are an expert fashion AI. I am providing two images. 
-    Image 1: The model and the location/background context.
-    Image 2: The specific product (clothing/accessory) to be worn.
-    
-    TASK: Generate an ultra-realistic 4K image of the EXACT same model from Image 1, in the EXACT same location/background, but now she is wearing/using the product from Image 2. 
-    Maintain all physical characteristics of the model and the background environment. 
-    Style instruction: ${variation.prompt}`
-  };
-
-  try {
-    const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-3-pro-image-preview',
-      contents: { parts: [modelPart, productPart, textPart] },
-      config: {
-        imageConfig: {
-          aspectRatio: "9:16",
-          imageSize: "4K"
-        }
-      }
-    });
-
-    for (const part of response.candidates?.[0]?.content?.parts || []) {
-      if (part.inlineData) {
-        return `data:image/png;base64,${part.inlineData.data}`;
+    config: {
+      imageConfig: {
+        aspectRatio: "9:16",
+        imageSize: "4K"
       }
     }
-    
-    throw new Error("Não foi possível extrair a imagem da resposta da IA.");
-  } catch (error: any) {
-    if (error.message?.includes("Requested entity was not found")) {
-      throw new Error("API_KEY_EXPIRED");
+  });
+
+  for (const part of response.candidates?.[0]?.content?.parts || []) {
+    if (part.inlineData) {
+      return `data:image/png;base64,${part.inlineData.data}`;
     }
-    throw error;
   }
+  
+  throw new Error("Falha ao gerar imagem.");
 }
